@@ -6,6 +6,11 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.graphics.barcode import code39, code128, code93
+from reportlab.graphics.barcode import eanbc, qr, usps
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics import renderPDF
+
+import JsonLoader
 
 class youl_invoice_gen():
     def __init__(self, top_margin_mean=12, left_margin_mean=7, page_width_mean=70, num_item_mean = 5, font_size_mean=10, char_space_mean=1, line_offset_mean=1):
@@ -77,9 +82,59 @@ class youl_invoice_gen():
 
     def draw_barcode(self, barcode_value):
         barcode39 = code39.Extended39(barcode_value, barHeight=5*mm)
-        self.y_cursor -= 10
+        self.y_cursor -= 5
         barcode39.drawOn(self.c, (self.page_width*mm - barcode39.width) / 2.0, self.y_cursor*mm)
         self.y_cursor -= 15
+
+    def draw_qr(self):
+        qr_code = qr.QrCodeWidget('www.mousevspython.com')
+        self.y_cursor -= 5
+        bounds = qr_code.getBounds()
+        width = bounds[2] - bounds[0]
+        height = bounds[3] - bounds[1]
+        d = Drawing(45, 45, transform=[45./width,0,0,45./height,0,0])
+        d.add(qr_code)
+        renderPDF.draw(d, self.c, (self.page_width*mm - width) / 2.0, self.y_cursor*mm)
+        self.y_cursor -= 15
+
+    def draw_address(self, font, font_size):
+        loader = JsonLoader.JsonLoader("Evanston")
+        loader.new_item()
+        name = loader.get_name()
+
+        if loader.has_logo():
+            print("has_logo")
+            self.y_cursor -= 20
+            self.c.drawImage("database/logos/" + name + ".png", 10*mm, self.y_cursor*mm, width=None,height=None, preserveAspectRatio=True, anchor='c')
+            self.y_cursor -= 10
+
+        textobj = self.c.beginText()
+        textobj.setFont(font, font_size)
+        textobj.setTextOrigin((self.page_width - self.get_string_x(name, font, font_size, self.char_space)/mm)*mm / 2.0, self.y_cursor*mm)
+        textobj.setCharSpace(self.char_space)
+        textobj.textLine(name)
+        self.c.drawText(textobj)
+        self.y_cursor -= font_size/mm + self.line_offset
+
+        address = loader.get_address()[0]
+        textobj = self.c.beginText()
+        textobj.setFont(font, font_size)
+        textobj.setTextOrigin((self.page_width - self.get_string_x(address, font, font_size, self.char_space)/mm)*mm / 2.0, self.y_cursor*mm)
+        textobj.setCharSpace(self.char_space)
+        textobj.textLine(address)
+        self.c.drawText(textobj)
+        self.y_cursor -= font_size/mm + self.line_offset
+
+        phone = loader.get_phone()
+        textobj = self.c.beginText()
+        textobj.setFont(font, font_size)
+        textobj.setTextOrigin((self.page_width - self.get_string_x(phone, font, font_size, self.char_space)/mm)*mm / 2.0, self.y_cursor*mm)
+        textobj.setCharSpace(self.char_space)
+        textobj.textLine(phone)
+        self.c.drawText(textobj)
+        self.y_cursor -= font_size/mm + self.line_offset
+
+        self.y_cursor -= 10
 
 
     def draw_invoice(self):
@@ -109,6 +164,7 @@ class youl_invoice_gen():
         subtotal = 0
 
         self.c = canvas.Canvas('youl.pdf', (self.page_width*mm, page_height*mm))
+        self.draw_address(font, item_font_size)
         for item_idx in range(num_item):
             amount = np.random.randint(30) + 0.99
             subtotal += amount
@@ -126,6 +182,7 @@ class youl_invoice_gen():
         self.draw_item('Total:', total, font, item_font_size)
 
         self.draw_barcode("1234567890")
+        self.draw_qr()
 
         self.c.showPage()
         self.c.save()

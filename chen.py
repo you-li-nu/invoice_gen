@@ -31,6 +31,8 @@ class LocationGenerator():
             'location': 'Evanston, IL'
         }
         response = requests.get(url=self.url, headers=self.headers, params=url_params)
+        with open('Evanston.json', 'w') as outfile:
+            json.dump(response.json(), outfile)
         locations = json.loads(response.content)
         print(locations)
         for i in range(len(locations['businesses'])):
