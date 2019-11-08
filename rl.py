@@ -37,6 +37,7 @@ class youl_invoice_gen():
 
         self.fonts = ['Courier', 'Courier-Bold', 'Courier-BoldOblique', 'Courier-Oblique', 'Helvetica', 'Helvetica-Bold', 'Helvetica-BoldOblique', 'Helvetica-Oblique', 'Times-Bold', 'Times-BoldItalic', 'Times-Italic', 'Times-Roman']
         self.separators = [' ', '-', '~', '*']
+        self.payments = ['VISA CREDIT', 'VISA (SWIPED)', 'VISA (CHIP)', 'MASTERCARD CREDIT', 'MASTERCARD (SWIPED)', 'MASTERCARD (CHIP)', 'AMEX CREDIT', 'AMEX (SWIPED)', 'AMEX (CHIP)']
         self.appreciations = ['Thank You and Please Come Again', 'Thank you']
 
         #=====Inferred Parameters=====
@@ -45,8 +46,8 @@ class youl_invoice_gen():
     def infer(self):
         self.top_margin_std = self.top_margin_mean / 3
         self.left_margin_std = self.left_margin_mean / 3
-        #self.page_width_std = self.page_width_mean / 27
-        self.page_width_std = 0
+        self.page_width_std = self.page_width_mean / 27
+        #self.page_width_std = 0
         self.num_item_std = self.num_item_mean / 3
         self.font_size_std = self.font_size_mean / 9
         self.char_space_std = self.char_space_mean / 9
@@ -100,9 +101,8 @@ class youl_invoice_gen():
         renderPDF.draw(d, self.c, self.left_margin + (self.page_width - width) / 2.0, self.y_cursor)
         self.y_cursor -= 15
 
-    def draw_address(self, font, font_size):
-        loader = JsonLoader.JsonLoader("Evanston")
-        loader.new_item()
+    def draw_address(self, loader, font, font_size):
+        
         name = loader.get_name()
 
         if loader.has_logo():
@@ -150,7 +150,7 @@ class youl_invoice_gen():
         textobj.textLine(s)
         self.c.drawText(textobj)
 
-        self.write_ground_truth(s, x_origin, self.page_height - self.y_cursor, self.get_string_x(s, font, font_size, self.char_space), font_size)
+        self.write_ground_truth(s, x_origin, self.y_cursor, self.get_string_x(s, font, font_size, self.char_space), font_size)
 
         self.y_cursor -= font_size + self.line_offset
 
@@ -169,10 +169,18 @@ class youl_invoice_gen():
 
         dt = random_date(d1, d2)
         self.draw_object(str(dt), font, font_size)
+        
+    def draw_payment(self, font, font_size):
+        payment = choice(self.payments)
+        self.draw_object(payment, font, font_size, x_origin=self.left_margin)
+        self.y_cursor += font_size + self.line_offset
 
-    def draw_invoice(self):
+        card_number = '*' + str(random.randrange(10**3, 10**4))
+        self.draw_object(card_number, font, font_size, x_origin=(self.page_width - self.left_margin - self.get_string_x(card_number, font, font_size, self.char_space)))
+
+    def draw_invoice(self, height=1000):
         #=====Init Invoice=====
-        self.page_height = 500
+        self.page_height = height
         self.page_width = max(0, int(np.random.normal(self.page_width_mean, self.page_width_std)))
         print ('page_width: %d' % self.page_width)
         item_font_size = max(0, int(np.random.normal(self.font_size_mean, self.font_size_std)))
@@ -192,50 +200,63 @@ class youl_invoice_gen():
         self.separator = choice(self.separators)
         print ('separator: %s' % self.separator)
         self.y_cursor = (self.page_height - top_margin - (item_font_size + self.line_offset))
+        init_y_cursor = self.y_cursor
         print ('y_cursor: %d' % self.y_cursor)
+        has_header = bool(random.getrandbits(1))
+        
+        loader = JsonLoader.JsonLoader("Evanston")
+        loader.new_item()
 
         subtotal = 0
         total_qty = 0
 
-        self.c = canvas.Canvas('youl.pdf', (self.page_width, self.page_height))
-        self.draw_address(font, item_font_size)
+        for epoch in range(2):#First epoch is to estimate page_height
+            self.ground_truth = ''
+            self.y_cursor = (self.page_height - top_margin - (item_font_size + self.line_offset))
+            self.c = canvas.Canvas('youl.pdf', (self.page_width, self.page_height))
+            self.draw_address(loader, font, item_font_size)
 
-        if bool(random.getrandbits(1)):
-            self.draw_header(font, item_font_size)
+            
+            if has_header:
+                self.draw_header(font, item_font_size)
+                self.draw_separator(font, item_font_size)
+            for item_idx in range(num_item):
+                amount = np.random.randint(30) + 0.99
+                qty = np.random.geometric(p=0.7)
+                if qty >= 10:
+                    qty = 1
+                subtotal += amount * qty
+                total_qty += qty
+                self.draw_item('cusine', amount * qty, font, item_font_size, qty)
             self.draw_separator(font, item_font_size)
-        for item_idx in range(num_item):
-            amount = np.random.randint(30) + 0.99
-            qty = np.random.geometric(p=0.7)
-            if qty >= 10:
-                qty = 1
-            subtotal += amount * qty
-            total_qty += qty
-            self.draw_item('cusine', amount * qty, font, item_font_size, qty)
-        self.draw_separator(font, item_font_size)
 
-        subtotal = round(subtotal * 1.00, 2)
-        self.draw_item('Subtotal:', subtotal, font, item_font_size)
-        tax_rate = 0.10
-        tax_amount = round(subtotal * (tax_rate), 2)
-        self.draw_item('Tax:', tax_amount, font, item_font_size)
-        self.draw_separator(font, item_font_size)
+            subtotal = round(subtotal * 1.00, 2)
+            self.draw_item('Subtotal:', subtotal, font, item_font_size)
+            tax_rate = 0.10
+            tax_amount = round(subtotal * (tax_rate), 2)
+            self.draw_item('Tax:', tax_amount, font, item_font_size)
+            self.draw_separator(font, item_font_size)
 
-        total = round(subtotal * (1.0 + tax_rate) * 1.00, 2)
-        self.draw_item('Total:', total, font, item_font_size)
-        #self.draw_item('Quantity:', total_qty, font, item_font_size)
+            total = round(subtotal * (1.0 + tax_rate) * 1.00, 2)
+            self.draw_item('Total:', total, font, item_font_size + 0)
+            #self.draw_item('Quantity:', total_qty, font, item_font_size)
+            self.draw_separator(font, item_font_size)
+            self.draw_payment(font, item_font_size)
 
-        self.draw_barcode(str(random.randrange(10**11, 10**12)))
+            self.draw_barcode(str(random.randrange(10**11, 10**12)))
 
-        self.draw_datetime(font, item_font_size)
-        self.draw_qr()
+            self.draw_datetime(font, item_font_size)
+            self.draw_qr()
 
-        appreciation = random.choice(self.appreciations)
-        self.draw_object(appreciation, font, item_font_size)
+            appreciation = random.choice(self.appreciations)
+            self.draw_object(appreciation, font, item_font_size)
+            
+            self.c.showPage()
+            self.c.save()
 
-        self.c.showPage()
-        self.c.save()
-
-        print(self.ground_truth)
+            if epoch == 1:
+                print(self.ground_truth)
+            self.page_height = init_y_cursor - self.y_cursor + 2 * top_margin + (item_font_size + self.line_offset)
 
 
 
@@ -243,4 +264,4 @@ class youl_invoice_gen():
 if __name__ == '__main__':
     a = youl_invoice_gen()
     a.infer()
-    a.draw_invoice()
+    a.draw_invoice(height=1000)
