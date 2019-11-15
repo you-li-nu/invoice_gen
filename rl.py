@@ -41,6 +41,10 @@ class youl_invoice_gen():
         self.appreciations = ['Thank You and Please Come Again', 'Thank you']
 
         #=====Inferred Parameters=====
+        file = open('menu.txt','r') 
+        self.rows = file.readlines()
+        #print (self.rows)
+        file.close()
 
 
     def infer(self):
@@ -207,10 +211,10 @@ class youl_invoice_gen():
         loader = JsonLoader.JsonLoader("Evanston")
         loader.new_item()
 
-        subtotal = 0
-        total_qty = 0
-
         for epoch in range(2):#First epoch is to estimate page_height
+		
+            subtotal = 0
+            total_qty = 0
             self.ground_truth = ''
             self.y_cursor = (self.page_height - top_margin - (item_font_size + self.line_offset))
             self.c = canvas.Canvas('youl.pdf', (self.page_width, self.page_height))
@@ -227,7 +231,14 @@ class youl_invoice_gen():
                     qty = 1
                 subtotal += amount * qty
                 total_qty += qty
-                self.draw_item('cusine', amount * qty, font, item_font_size, qty)
+                #self.draw_item('cusine', amount * qty, font, item_font_size, qty)
+                cusine = ''
+                while True:
+                    cusine = random.choice(self.rows)
+                    if len(cusine) < 19:
+                        break
+					
+                self.draw_item(cusine.strip(), amount * qty, font, item_font_size, qty)
             self.draw_separator(font, item_font_size)
 
             subtotal = round(subtotal * 1.00, 2)
