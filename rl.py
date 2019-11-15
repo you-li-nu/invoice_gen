@@ -235,7 +235,7 @@ class youl_invoice_gen():
                 cusine = ''
                 while True:
                     cusine = random.choice(self.rows)
-                    if len(cusine) < 19:
+                    if len(cusine) < 20:
                         break
 					
                 self.draw_item(cusine.strip(), amount * qty, font, item_font_size, qty)
