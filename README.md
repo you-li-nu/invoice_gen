@@ -1,2 +1,6 @@
-'pip install reportlab'
-python3 rl.py
+```matlab
+pip install reportlab
+```
+```matlab
+python /src/rl.py
+```
