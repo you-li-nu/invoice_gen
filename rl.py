@@ -41,10 +41,7 @@ class youl_invoice_gen():
         self.appreciations = ['Thank You and Please Come Again', 'Thank you']
 
         #=====Inferred Parameters=====
-        file = open('menu.txt','r') 
-        self.rows = file.readlines()
-        #print (self.rows)
-        file.close()
+        
 
 
     def infer(self):
@@ -57,6 +54,15 @@ class youl_invoice_gen():
         self.char_space_std = self.char_space_mean / 9
         self.line_offset_std = self.line_offset_mean / 3
 
+        self.get_menu_rows()
+
+    def get_menu_rows(self):
+        file = open('database/menus/joy_yee.txt','r') 
+        self.rows = file.readlines()
+        #print (self.rows)
+        file.close()
+
+		
     def get_string_x(self, string, font, size, charspace):
         width = stringWidth(string, font, size)
         width += (len(string) - 1) * charspace
@@ -182,6 +188,13 @@ class youl_invoice_gen():
         card_number = '*' + str(random.randrange(10**3, 10**4))
         self.draw_object(card_number, font, font_size, x_origin=(self.page_width - self.left_margin - self.get_string_x(card_number, font, font_size, self.char_space)))
 
+    def get_item_width(self, font, font_size):
+        separator_str = ''
+        while self.get_string_x(separator_str, font, font_size, self.char_space) < (self.page_width - self.left_margin * 2) / (7 / 4):
+            separator_str += self.separator
+        return len(separator_str)
+	    
+	
     def draw_invoice(self, height=1000):
         #=====Init Invoice=====
         self.page_height = height
@@ -193,7 +206,7 @@ class youl_invoice_gen():
         print ('left_margin: %d' % self.left_margin)
         top_margin = max(0, int(np.random.normal(self.top_margin_mean, self.top_margin_std)))
         print ('top_margin: %d' % top_margin)
-        num_item = max(0, int(np.random.normal(self.num_item_mean, self.num_item_std)))
+        num_item = max(1, int(np.random.normal(self.num_item_mean, self.num_item_std)))
         print ('top_margin: %d' % top_margin)
         self.char_space = max(0, int(np.random.normal(self.char_space_mean, self.char_space_std)))
         print ('char_space: %d' % self.char_space)
@@ -218,12 +231,17 @@ class youl_invoice_gen():
             self.ground_truth = ''
             self.y_cursor = (self.page_height - top_margin - (item_font_size + self.line_offset))
             self.c = canvas.Canvas('youl.pdf', (self.page_width, self.page_height))
+			
+			# Address
             self.draw_address(loader, font, item_font_size)
 
-            
+            # Header         
             if has_header:
                 self.draw_header(font, item_font_size)
                 self.draw_separator(font, item_font_size)
+            
+			# Items
+            self.item_width = self.get_item_width(font, item_font_size)
             for item_idx in range(num_item):
                 amount = np.random.randint(30) + 0.99
                 qty = np.random.geometric(p=0.7)
@@ -235,30 +253,41 @@ class youl_invoice_gen():
                 cusine = ''
                 while True:
                     cusine = random.choice(self.rows)
-                    if len(cusine) < 22:
+                    if len(cusine) < self.item_width:
                         break
 					
                 self.draw_item(cusine.strip(), amount * qty, font, item_font_size, qty)
             self.draw_separator(font, item_font_size)
-
+			
+            # Subtotal
             subtotal = round(subtotal * 1.00, 2)
             self.draw_item('Subtotal:', subtotal, font, item_font_size)
             tax_rate = 0.10
             tax_amount = round(subtotal * (tax_rate), 2)
+			
+			# Tax
             self.draw_item('Tax:', tax_amount, font, item_font_size)
             self.draw_separator(font, item_font_size)
 
+            # Total
             total = round(subtotal * (1.0 + tax_rate) * 1.00, 2)
             self.draw_item('Total:', total, font, item_font_size + 0)
             #self.draw_item('Quantity:', total_qty, font, item_font_size)
             self.draw_separator(font, item_font_size)
+			
+			# Payment
             self.draw_payment(font, item_font_size)
 
+            # Barcode
             self.draw_barcode(str(random.randrange(10**11, 10**12)))
 
+            # DateTime
             self.draw_datetime(font, item_font_size)
+			
+			# QR
             self.draw_qr()
 
+            # Appreciation
             appreciation = random.choice(self.appreciations)
             self.draw_object(appreciation, font, item_font_size)
             
