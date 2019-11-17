@@ -1,8 +1,9 @@
-```matlab
+```bash
 pip install reportlab
 ```
-```matlab
+```bash
 python /src/rl.py
 ```
-
-See results in /res
+```bash
+#See results in /res
+```
