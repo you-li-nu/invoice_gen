@@ -13,7 +13,7 @@ class JsonLoader():
 
 
     def new_item(self):
-        i = random.randint(0, len(self.locations['businesses']))
+        i = random.randint(0, len(self.locations['businesses']) - 1)
         self.location = self.locations['businesses'][i]
 
     def get_name(self):

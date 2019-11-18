@@ -55,6 +55,7 @@ class youl_invoice_gen():
         self.line_offset_std = self.line_offset_mean / 3
 
         self.get_menu_rows()
+        self.dt = self.get_datetime()
 
     def get_menu_rows(self):
         file = open('database/menus/joy_yee.txt','r') 
@@ -75,11 +76,26 @@ class youl_invoice_gen():
             self.draw_object(str(qty), font, font_size, x_origin=self.left_margin)
             self.y_cursor += font_size + self.line_offset
 
-        self.draw_object(name, font, font_size, x_origin=self.left_margin + qty_width)
-        self.y_cursor += font_size + self.line_offset
-
         amount_name = '$' +str(amount)
         self.draw_object(amount_name, font, font_size, x_origin=(self.page_width - self.left_margin - self.get_string_x(amount_name, font, font_size, self.char_space)))
+        self.y_cursor += font_size + self.line_offset
+
+        if len(name) <= self.item_width - self.char_space * 1:
+        	self.draw_object(name, font, font_size, x_origin=self.left_margin + qty_width)
+        else:
+        	name_list = name.split()
+        	name_list_idx = 0
+        	line1 = ''
+        	line2 = ''
+        	while len(line1) < self.item_width - self.char_space * 1 and name_list_idx <= len(name_list) - 1:
+        		line1 += name_list[name_list_idx] + ' '
+        		name_list_idx += 1
+        	self.draw_object(line1.strip(), font, font_size, x_origin=self.left_margin + qty_width)
+        	while len(line2) < self.item_width - self.char_space * 1 and name_list_idx <= len(name_list) - 1:
+        		line2 += name_list[name_list_idx] + ' '
+        		name_list_idx += 1
+        	self.draw_object(line2.strip(), font, font_size, x_origin=self.left_margin + qty_width)
+
 
     def draw_separator(self, font, font_size):
         textobj = self.c.beginText()
@@ -164,7 +180,7 @@ class youl_invoice_gen():
 
         self.y_cursor -= font_size + self.line_offset
 
-    def draw_datetime(self, font, font_size):
+    def get_datetime(self):
         def random_date(start, end):
             """
             This function will return a random datetime between two datetime
@@ -174,11 +190,15 @@ class youl_invoice_gen():
             int_delta = (delta.days * 24 * 60 * 60) + delta.seconds
             random_second = randrange(int_delta)
             return start + timedelta(seconds=random_second)
+
         d1 = datetime.strptime('1/1/2018 1:30 PM', '%m/%d/%Y %I:%M %p')
         d2 = datetime.strptime('1/1/2019 4:50 AM', '%m/%d/%Y %I:%M %p')
 
         dt = random_date(d1, d2)
-        self.draw_object(str(dt), font, font_size)
+        return str(dt)
+
+    def draw_datetime(self, font, font_size):
+        self.draw_object(self.dt, font, font_size)
         
     def draw_payment(self, font, font_size):
         payment = choice(self.payments)
@@ -249,14 +269,15 @@ class youl_invoice_gen():
                     qty = 1
                 subtotal += amount * qty
                 total_qty += qty
-                #self.draw_item('cusine', amount * qty, font, item_font_size, qty)
-                cusine = ''
+                #self.draw_item('cuisine', amount * qty, font, item_font_size, qty)
+                cuisine = ''
                 while True:
-                    cusine = random.choice(self.rows)
-                    if len(cusine) < self.item_width:
+                    cuisine = random.choice(self.rows)
+                    #if len(cuisine) < self.item_width * 2 - self.char_space * 2:
+                    if len(cuisine) < self.item_width:
                         break
 					
-                self.draw_item(cusine.strip(), amount * qty, font, item_font_size, qty)
+                self.draw_item(cuisine.strip(), amount * qty, font, item_font_size, qty)
             self.draw_separator(font, item_font_size)
 			
             # Subtotal
