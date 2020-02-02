@@ -16,7 +16,7 @@ from reportlab.graphics import renderPDF
 import JsonLoader
 
 class youl_invoice_gen():
-    def __init__(self, top_margin_mean=20, left_margin_mean=20, page_width_mean=300, num_item_mean = 5, font_size_mean=10, char_space_mean=3, line_offset_mean=3):
+    def __init__(self, top_margin_mean=20, left_margin_mean=20, page_width_mean=300, num_item_mean = 5, font_size_mean=10, char_space_mean=3, line_offset_mean=3, grey_mean = 70, blue_mean = 40, blue_ratio_mean = 50):
         #=====Objects=====
         self.ground_truth = ''
 
@@ -30,6 +30,9 @@ class youl_invoice_gen():
         self.font_size_mean = font_size_mean
         self.char_space_mean = char_space_mean
         self.line_offset_mean = line_offset_mean
+        self.grey_mean = grey_mean
+        self.blue_mean = blue_mean
+        self.blue_ratio_mean = blue_ratio_mean
 
         #self.prefer_separate_type = prefer_separate_type
         #self.prefer_font_type = prefer_font_type
@@ -54,6 +57,10 @@ class youl_invoice_gen():
         self.char_space_std = self.char_space_mean / 9
         self.line_offset_std = self.line_offset_mean / 3
 
+        self.grey_std = self.grey_mean / 3
+        self.blue_std = self.blue_mean / 3
+        self.blue_ratio_std = self.blue_ratio_mean / 3
+
         self.get_menu_rows()
         self.dt = self.get_datetime()
 
@@ -63,7 +70,7 @@ class youl_invoice_gen():
         #print (self.rows)
         file.close()
 
-		
+        
     def get_string_x(self, string, font, size, charspace):
         width = stringWidth(string, font, size)
         width += (len(string) - 1) * charspace
@@ -81,20 +88,20 @@ class youl_invoice_gen():
         self.y_cursor += font_size + self.line_offset
 
         if len(name) <= self.item_width - self.char_space * 1:
-        	self.draw_object(name, font, font_size, x_origin=self.left_margin + qty_width)
+            self.draw_object(name, font, font_size, x_origin=self.left_margin + qty_width)
         else:
-        	name_list = name.split()
-        	name_list_idx = 0
-        	line1 = ''
-        	line2 = ''
-        	while len(line1) < self.item_width - self.char_space * 1 and name_list_idx <= len(name_list) - 1:
-        		line1 += name_list[name_list_idx] + ' '
-        		name_list_idx += 1
-        	self.draw_object(line1.strip(), font, font_size, x_origin=self.left_margin + qty_width)
-        	while len(line2) < self.item_width - self.char_space * 1 and name_list_idx <= len(name_list) - 1:
-        		line2 += name_list[name_list_idx] + ' '
-        		name_list_idx += 1
-        	self.draw_object(line2.strip(), font, font_size, x_origin=self.left_margin + qty_width)
+            name_list = name.split()
+            name_list_idx = 0
+            line1 = ''
+            line2 = ''
+            while len(line1) < self.item_width - self.char_space * 1 and name_list_idx <= len(name_list) - 1:
+                line1 += name_list[name_list_idx] + ' '
+                name_list_idx += 1
+            self.draw_object(line1.strip(), font, font_size, x_origin=self.left_margin + qty_width)
+            while len(line2) < self.item_width - self.char_space * 1 and name_list_idx <= len(name_list) - 1:
+                line2 += name_list[name_list_idx] + ' '
+                name_list_idx += 1
+            self.draw_object(line2.strip(), font, font_size, x_origin=self.left_margin + qty_width)
 
 
     def draw_separator(self, font, font_size):
@@ -168,6 +175,8 @@ class youl_invoice_gen():
 
     def draw_object(self, s, font, font_size, x_origin=None):
         textobj = self.c.beginText()
+
+        textobj.setFillColorRGB(1 - self.grey_color / 100.0, 1 - min(100, max(0, self.grey_color - self.blue_color / 3)) / 100.0, 1 - min(100, max(0, self.grey_color - self.blue_color)) / 100.0)
         textobj.setFont(font, font_size)
         if x_origin == None:
             x_origin = (self.page_width - self.get_string_x(s, font, font_size, self.char_space)) / 2.0
@@ -213,8 +222,8 @@ class youl_invoice_gen():
         while self.get_string_x(separator_str, font, font_size, self.char_space) < (self.page_width - self.left_margin * 2) / (7 / 4):
             separator_str += self.separator
         return len(separator_str)
-	    
-	
+        
+    
     def draw_invoice(self, height=1000):
         #=====Init Invoice=====
         self.page_height = height
@@ -232,6 +241,20 @@ class youl_invoice_gen():
         print ('char_space: %d' % self.char_space)
         self.line_offset = max(0, int(np.random.normal(self.line_offset_mean, self.line_offset_std)))
         print ('line_offset: %d' % self.line_offset)
+        self.grey_color = max(0, int(np.random.normal(self.grey_mean, self.grey_std)))
+        self.grey_color = min(100, self.grey_color)
+        print ('grey_color: %d' % self.grey_color)
+        self.blue_color = max(0, int(np.random.normal(self.blue_mean, self.blue_std)))
+        self.blue_color = min(100, self.blue_color)
+        print ('blue_color: %d' % self.blue_color)
+        self.blue_ratio = max(0, int(np.random.normal(self.blue_ratio_mean, self.blue_ratio_std)))
+        print ('blue_ratio: %d' % self.blue_ratio)
+        if np.random.rand() * 100 < self.blue_ratio:
+            has_blue = 1
+        else:
+            has_blue = 0
+            self.blue_color = 0
+        print ('has_blue: %d' % has_blue)
         font = choice(self.fonts)
         print ('font: %s' % font)
         self.separator = choice(self.separators)
@@ -245,14 +268,14 @@ class youl_invoice_gen():
         loader.new_item()
 
         for epoch in range(2):#First epoch is to estimate page_height
-		
+        
             subtotal = 0
             total_qty = 0
             self.ground_truth = ''
             self.y_cursor = (self.page_height - top_margin - (item_font_size + self.line_offset))
             self.c = canvas.Canvas('youl.pdf', (self.page_width, self.page_height))
-			
-			# Address
+            
+            # Address
             self.draw_address(loader, font, item_font_size)
 
             # Header         
@@ -260,7 +283,7 @@ class youl_invoice_gen():
                 self.draw_header(font, item_font_size)
                 self.draw_separator(font, item_font_size)
             
-			# Items
+            # Items
             self.item_width = self.get_item_width(font, item_font_size)
             for item_idx in range(num_item):
                 amount = np.random.randint(30) + 0.99
@@ -276,17 +299,17 @@ class youl_invoice_gen():
                     #if len(cuisine) < self.item_width * 2 - self.char_space * 2:
                     if len(cuisine) < self.item_width:
                         break
-					
+                    
                 self.draw_item(cuisine.strip(), amount * qty, font, item_font_size, qty)
             self.draw_separator(font, item_font_size)
-			
+            
             # Subtotal
             subtotal = round(subtotal * 1.00, 2)
             self.draw_item('Subtotal:', subtotal, font, item_font_size)
             tax_rate = 0.10
             tax_amount = round(subtotal * (tax_rate), 2)
-			
-			# Tax
+            
+            # Tax
             self.draw_item('Tax:', tax_amount, font, item_font_size)
             self.draw_separator(font, item_font_size)
 
@@ -295,8 +318,8 @@ class youl_invoice_gen():
             self.draw_item('Total:', total, font, item_font_size + 0)
             #self.draw_item('Quantity:', total_qty, font, item_font_size)
             self.draw_separator(font, item_font_size)
-			
-			# Payment
+            
+            # Payment
             self.draw_payment(font, item_font_size)
 
             # Barcode
@@ -304,8 +327,8 @@ class youl_invoice_gen():
 
             # DateTime
             self.draw_datetime(font, item_font_size)
-			
-			# QR
+            
+            # QR
             self.draw_qr()
 
             # Appreciation

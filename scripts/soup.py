@@ -8,8 +8,9 @@ class MenuParser():
 		soup = BeautifulSoup(req.content, 'html.parser')
 		for i in soup.find_all('span', {'class': 'item-title'}):
 			t = i.text
+			print (t)
 			if '.' in t:
 				print (t[t.index('.')+1:].strip())
 		
 		
-m = MenuParser('https://www.allmenus.com/il/evanston/16742-joy-yee-noodle/menu/')
+m = MenuParser('https://www.allmenus.com/il/evanston/494140-ten-mile-house/menu/')
